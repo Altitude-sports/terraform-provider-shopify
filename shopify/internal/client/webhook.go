@@ -1,11 +1,14 @@
-package shopifygo
+package client
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dghubble/sling"
+	"log"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/dghubble/sling"
 )
 
 type WebhookService struct {
@@ -14,7 +17,7 @@ type WebhookService struct {
 
 func newWebhookService(sling *sling.Sling) *WebhookService {
 	return &WebhookService{
-		sling: sling.New().Path("admin/"),
+		sling: sling.New().Path("admin/").Path("webhooks/"),
 	}
 }
 
@@ -25,7 +28,11 @@ func newWebhookService(sling *sling.Sling) *WebhookService {
 type WebhookInput struct {
 	Topic   string `json:"topic"`
 	Address string `json:"address"`
-	Format  string `json:"format"`
+
+	Format                     string   `json:"format"`
+	Fields                     []string `json:"fields"`
+	MetafieldNamespaces        []string `json:"metafield_namespaces"`
+	PrivateMetafieldNamespaces []string `json:"private_metafield_namespaces"`
 }
 
 type WebhookInputBody struct {
@@ -37,12 +44,13 @@ type WebhookInputBody struct {
 // -----------------------------------------------------------------------------
 
 type Webhook struct {
-	Id         int    `json:"id"`
-	Topic      string `json:"topic"`
-	Address    string `json:"address"`
-	Format     string `json:"format"`
-	Created_at string `json:"created_at"`
-	Updated_at string `json."updated_at"`
+	// Read-only fields
+	Id         uint64 `json:"id"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+	ApiVersion string `json:"api_version"`
+
+	WebhookInput
 }
 
 type WebhookResponse struct {
@@ -56,10 +64,15 @@ type WebhookDeleteResponse struct{}
 // -----------------------------------------------------------------------------
 
 type WebhookErrorMessage struct {
-	WebhookMessage *string   `json:"webhook,omitempty"`
+	WebhookMessage *string `json:"webhook,omitempty"`
+
 	TopicMessage   *[]string `json:"topic,omitempty"`
 	AddressMessage *[]string `json:"address,omitempty"`
 	FormatMessage  *[]string `json:"format,omitempty"`
+
+	FieldsMessage                     *[]string `json:"fields,omitempty"`
+	MetafieldNamespacesMessage        *[]string `json:"metafield_namespaces,omitempty"`
+	PrivateMetafieldNamespacesMessage *[]string `json:"private_metafield_namespaces,omitempty"`
 }
 
 type WebhookError struct {
@@ -73,25 +86,55 @@ func (err WebhookError) Error() string {
 
 	webhookMessage := ""
 	if err.Errors.WebhookMessage != nil {
-		webhookMessage = " " + *err.Errors.WebhookMessage
+		webhookMessage = *err.Errors.WebhookMessage
 	}
 
 	topicMessage := ""
 	if err.Errors.TopicMessage != nil {
-		topicMessage = fmt.Sprintf(" topic: %v", *err.Errors.TopicMessage)
+		topicMessage = fmt.Sprintf("topic: %v", *err.Errors.TopicMessage)
 	}
 
 	addressMessage := ""
 	if err.Errors.AddressMessage != nil {
-		addressMessage = fmt.Sprintf(" address: %v", *err.Errors.AddressMessage)
+		addressMessage = fmt.Sprintf("address: %v", *err.Errors.AddressMessage)
 	}
 
 	formatMessage := ""
 	if err.Errors.FormatMessage != nil {
-		formatMessage = fmt.Sprintf(" format: %v", *err.Errors.FormatMessage)
+		formatMessage = fmt.Sprintf("format: %v", *err.Errors.FormatMessage)
 	}
 
-	return fmt.Sprintf("Shopify:%s%s%s%s", webhookMessage, topicMessage, addressMessage, formatMessage)
+	fieldsMessage := ""
+	if err.Errors.FieldsMessage != nil {
+		fieldsMessage = fmt.Sprintf("fields: %v", *err.Errors.FieldsMessage)
+	}
+
+	metafieldNamespacesMessage := ""
+	if err.Errors.MetafieldNamespacesMessage != nil {
+		metafieldNamespacesMessage = fmt.Sprintf(
+			"metafield_namespaces: %v",
+			*err.Errors.MetafieldNamespacesMessage,
+		)
+	}
+
+	privateMetafieldNamespacesMessage := ""
+	if err.Errors.PrivateMetafieldNamespacesMessage != nil {
+		privateMetafieldNamespacesMessage = fmt.Sprintf(
+			"private_metafield_namespaces: %v",
+			*err.Errors.PrivateMetafieldNamespacesMessage,
+		)
+	}
+
+	return strings.Join([]string{
+		"Shopify:",
+		webhookMessage,
+		topicMessage,
+		addressMessage,
+		formatMessage,
+		fieldsMessage,
+		metafieldNamespacesMessage,
+		privateMetafieldNamespacesMessage,
+	}, " ")
 }
 
 // -----------------------------------------------------------------------------
@@ -101,31 +144,48 @@ func (err WebhookError) Error() string {
 func (service *WebhookService) Create(params *WebhookInput) (Webhook, *http.Response, error) {
 	webhookResponse := new(WebhookResponse)
 	genericError := new(json.RawMessage)
-	resp, err := service.sling.New().Post("webhooks.json").BodyJSON(&WebhookInputBody{Webhook: *params}).Receive(webhookResponse, genericError)
+	payload := &WebhookInputBody{
+		Webhook: *params,
+	}
+	request := service.sling.Post("").BodyJSON(payload)
+	log.Printf("[DEBUG] request to Shopify: %s", request)
+
+	resp, err := request.Receive(webhookResponse, genericError)
 	return webhookResponse.Webhook, resp, relevantError(resp, err, genericError, new(WebhookError))
 }
 
 func (service *WebhookService) Read(webhookId string) (Webhook, *http.Response, error) {
 	webhookResponse := new(WebhookResponse)
 	genericError := new(json.RawMessage)
-	path := fmt.Sprintf("webhooks/%s.json", url.PathEscape(webhookId))
-	resp, err := service.sling.New().Get(path).Receive(webhookResponse, genericError)
+	path := url.PathEscape(webhookId)
+	request := service.sling.Get(path)
+	log.Printf("[DEBUG] request to Shopify: %s", request)
+
+	resp, err := request.Receive(webhookResponse, genericError)
 	return webhookResponse.Webhook, resp, relevantError(resp, err, genericError, new(WebhookError))
 }
 
 func (service *WebhookService) Update(webhookId string, params *WebhookInput) (Webhook, *http.Response, error) {
 	webhookResponse := new(WebhookResponse)
 	genericError := new(json.RawMessage)
-	path := fmt.Sprintf("webhooks/%s.json", url.PathEscape(webhookId))
-	resp, err := service.sling.New().Put(path).BodyJSON(&WebhookInputBody{Webhook: *params}).Receive(webhookResponse, genericError)
+	path := url.PathEscape(webhookId)
+	payload := &WebhookInputBody{
+		Webhook: *params,
+	}
+	request := service.sling.Put(path).BodyJSON(payload)
+	log.Printf("[DEBUG] request to Shopify: %s", request)
+
+	resp, err := request.Receive(webhookResponse, genericError)
 	return webhookResponse.Webhook, resp, relevantError(resp, err, genericError, new(WebhookError))
 }
 
 func (service *WebhookService) Delete(webhookId string) (*http.Response, error) {
 	webhookDeleteResponse := new(WebhookDeleteResponse)
 	genericError := new(json.RawMessage)
-	path := fmt.Sprintf("webhooks/%s.json", url.PathEscape(webhookId))
-	resp, err := service.sling.New().Delete(path).Receive(webhookDeleteResponse, genericError)
+	path := url.PathEscape(webhookId)
+	request := service.sling.Delete(path)
+	log.Printf("[DEBUG] request to Shopify: %s", request)
 
+	resp, err := request.Receive(webhookDeleteResponse, genericError)
 	return resp, relevantError(resp, err, genericError, new(WebhookError))
 }

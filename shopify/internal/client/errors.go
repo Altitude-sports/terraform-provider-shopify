@@ -1,4 +1,4 @@
-package shopifygo
+package client
 
 import (
 	"encoding/json"
@@ -17,11 +17,11 @@ func (err ApiError) Error() string {
 	return fmt.Sprintf("Shopify: %s", err.Errors)
 }
 
-// relevantError returns any non-nil http-related error (creating the request, getting
-// the response, decoding) if any. If the response was a success, it returns nil.
-// If the decoded apiError is non-nil the apiError is returned. Otherwise, an attempt
-// is made to decode the response in to all other possible error types. Finally,
-// a generic error is returned if needed.
+// relevantError returns any non-nil http-related error (creating the request,
+// getting the response, decoding) if any. If the response was a success, it
+// returns nil. If the decoded apiError is non-nil the apiError is returned.
+// Otherwise, an attempt is made to decode the response in to all other possible
+// error types. Finally, a generic error is returned if needed.
 func relevantError(resp *http.Response, httpError error, errorDetails *json.RawMessage, errorTypes ...error) error {
 	if httpError != nil {
 		return httpError
@@ -42,5 +42,5 @@ func relevantError(resp *http.Response, httpError error, errorDetails *json.RawM
 		}
 	}
 
-	return fmt.Errorf("Unknown API error encountered. Status Code: %d", resp.StatusCode)
+	return fmt.Errorf("unknown API error encountered. Status Code: %d", resp.StatusCode)
 }
