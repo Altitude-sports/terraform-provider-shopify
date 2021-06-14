@@ -1,4 +1,4 @@
-module github.com/edahlseng/terraform-provider-shopify
+module github.com/Altitude-sports/terraform-provider-shopify
 
 go 1.12
 
