@@ -1,19 +1,22 @@
 package shopify
 
 import (
-	"fmt"
-	shopify "github.com/edahlseng/terraform-provider-shopify/shopify/shopify-go"
-	"github.com/hashicorp/terraform/helper/schema"
+	"context"
 	"log"
 	"net/http"
+	"strconv"
+
+	shopify "github.com/Altitude-sports/terraform-provider-shopify/shopify/internal/client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceShopifyWebhook() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceShopifyWebhookCreate,
-		Read:   resourceShopifyWebhookRead,
-		Update: resourceShopifyWebhookUpdate,
-		Delete: resourceShopifyWebhookDelete,
+		CreateContext: resourceShopifyWebhookCreate,
+		ReadContext:   resourceShopifyWebhookRead,
+		UpdateContext: resourceShopifyWebhookUpdate,
+		DeleteContext: resourceShopifyWebhookDelete,
 
 		Schema: map[string]*schema.Schema{
 			"topic": {
@@ -25,87 +28,185 @@ func resourceShopifyWebhook() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+
 			"format": {
 				Type:     schema.TypeString,
-				Required: true,
+				Default:  "json",
+				Optional: true,
+			},
+			"fields": {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional: true,
+			},
+			"metafield_namespaces": {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional: true,
+			},
+			"private_metafield_namespaces": {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional: true,
 			},
 		},
 
 		Importer: &schema.ResourceImporter{
-			State: schema.ImportStatePassthrough,
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
 
-func resourceShopifyWebhookCreate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*shopify.Client)
+func resourceShopifyWebhookCreate(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
+	fields := []string{}
+	if v, ok := d.GetOk("fields"); ok {
+		for _, val := range v.([]interface{}) {
+			fields = append(fields, val.(string))
+		}
+	}
+
+	metafieldNamespaces := []string{}
+	if v, ok := d.GetOk("metafield_namespaces"); ok {
+		for _, val := range v.([]interface{}) {
+			metafieldNamespaces = append(metafieldNamespaces, val.(string))
+		}
+	}
+
+	privateMetafieldNamespaces := []string{}
+	if v, ok := d.GetOk("private_metafield_namespaces"); ok {
+		for _, val := range v.([]interface{}) {
+			privateMetafieldNamespaces = append(privateMetafieldNamespaces, val.(string))
+		}
+	}
 
 	params := &shopify.WebhookInput{
 		Topic:   d.Get("topic").(string),
 		Address: d.Get("address").(string),
-		Format:  d.Get("format").(string),
+
+		Format:                     d.Get("format").(string),
+		Fields:                     fields,
+		MetafieldNamespaces:        metafieldNamespaces,
+		PrivateMetafieldNamespaces: privateMetafieldNamespaces,
 	}
 
+	client := meta.(*shopify.Client)
 	webhook, _, err := client.Webhooks.Create(params)
 	if err != nil {
-		return fmt.Errorf("Error creating Shopify webhook: %s", err)
+		return diag.Errorf("could not create Shopify webhook: %s", err)
 	}
 
-	d.SetId(fmt.Sprintf("%d", webhook.Id))
-	d.Set("topic", webhook.Topic)
-	d.Set("address", webhook.Address)
-	d.Set("format", webhook.Format)
+	d.SetId(strconv.FormatUint(webhook.Id, 10))
+
+	_ = d.Set("topic", webhook.Topic)
+	_ = d.Set("address", webhook.Address)
+
+	_ = d.Set("format", webhook.Format)
+	_ = d.Set("fields", webhook.Fields)
+	_ = d.Set("metafield_namespaces", webhook.MetafieldNamespaces)
+	_ = d.Set("private_metafield_namespaces", webhook.PrivateMetafieldNamespaces)
 
 	return nil
 }
 
-func resourceShopifyWebhookUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*shopify.Client)
+func resourceShopifyWebhookUpdate(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
+	fields := []string{}
+	if v, ok := d.GetOk("fields"); ok {
+		for _, val := range v.([]interface{}) {
+			fields = append(fields, val.(string))
+		}
+	}
+
+	metafieldNamespaces := []string{}
+	if v, ok := d.GetOk("metafield_namespaces"); ok {
+		for _, val := range v.([]interface{}) {
+			metafieldNamespaces = append(metafieldNamespaces, val.(string))
+		}
+	}
+
+	privateMetafieldNamespaces := []string{}
+	if v, ok := d.GetOk("private_metafield_namespaces"); ok {
+		for _, val := range v.([]interface{}) {
+			privateMetafieldNamespaces = append(privateMetafieldNamespaces, val.(string))
+		}
+	}
 
 	params := &shopify.WebhookInput{
 		Topic:   d.Get("topic").(string),
 		Address: d.Get("address").(string),
-		Format:  d.Get("format").(string),
+
+		Format:                     d.Get("format").(string),
+		Fields:                     fields,
+		MetafieldNamespaces:        metafieldNamespaces,
+		PrivateMetafieldNamespaces: privateMetafieldNamespaces,
 	}
 
+	client := meta.(*shopify.Client)
 	webhook, _, err := client.Webhooks.Update(d.Id(), params)
 	if err != nil {
-		return fmt.Errorf("Error updating Shopify webhook: %s", err)
+		return diag.Errorf("could not update Shopify webhook: %s", err)
 	}
 
-	d.Set("topic", webhook.Topic)
-	d.Set("address", webhook.Address)
-	d.Set("format", webhook.Format)
+	_ = d.Set("topic", webhook.Topic)
+	_ = d.Set("address", webhook.Address)
+
+	_ = d.Set("format", webhook.Format)
+	_ = d.Set("fields", webhook.Fields)
+	_ = d.Set("metafield_namespaces", webhook.MetafieldNamespaces)
+	_ = d.Set("private_metafield_namespaces", webhook.PrivateMetafieldNamespaces)
 
 	return nil
 }
 
-func resourceShopifyWebhookRead(d *schema.ResourceData, meta interface{}) error {
+func resourceShopifyWebhookRead(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
 	client := meta.(*shopify.Client)
-
 	webhook, resp, err := client.Webhooks.Read(d.Id())
 	if resp.StatusCode == http.StatusNotFound {
-		log.Printf("Removing webhook from state because it no longer exists in Shopify")
+		log.Printf("[DEBUG] Removing webhook ID='%s' from state because it no longer exists in Shopify", d.Id())
 		d.SetId("")
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("Error reading Shopify webhook: %s", err)
+		return diag.Errorf("could not retrieve Shopify webhook details: %s", err)
 	}
 
-	d.Set("topic", webhook.Topic)
-	d.Set("address", webhook.Address)
-	d.Set("format", webhook.Format)
+	_ = d.Set("topic", webhook.Topic)
+	_ = d.Set("address", webhook.Address)
+
+	_ = d.Set("format", webhook.Format)
+	_ = d.Set("fields", webhook.Fields)
+	_ = d.Set("metafield_namespaces", webhook.MetafieldNamespaces)
+	_ = d.Set("private_metafield_namespaces", webhook.PrivateMetafieldNamespaces)
 
 	return nil
 }
 
-func resourceShopifyWebhookDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceShopifyWebhookDelete(
+	ctx context.Context,
+	d *schema.ResourceData,
+	meta interface{},
+) diag.Diagnostics {
 	client := meta.(*shopify.Client)
-
 	_, err := client.Webhooks.Delete(d.Id())
 	if err != nil {
-		return fmt.Errorf("Error deleting Shopify webhook: %s", err)
+		return diag.Errorf("could not delete Shopify webhook: %s", err)
 	}
 
 	return nil

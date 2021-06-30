@@ -4,10 +4,13 @@ TARGETS=darwin linux windows
 WEBSITE_REPO=github.com/hashicorp/terraform-website
 PKG_NAME=shopify
 
-default: build
+default: build fmtcheck staticcheck errcheck
 
-build: fmtcheck
+build:
 	go build -o terraform-provider-shopify main.go
+
+clean:
+	rm terraform-provider-shopify
 
 targets: $(TARGETS)
 
@@ -38,8 +41,15 @@ fmt:
 fmtcheck:
 	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
 
+staticcheck:
+	@printf $(COLOR) "Run static check..."
+	@GO111MODULE=off go get -u honnef.co/go/tools/cmd/staticcheck
+	@staticcheck ./...
+
 errcheck:
-	@sh -c "'$(CURDIR)/scripts/errcheck.sh'"
+	@printf $(COLOR) "Run error check..."
+	@GO111MODULE=off go get -u github.com/kisielk/errcheck
+	@errcheck ./...
 
 vendor-status:
 	@govendor status

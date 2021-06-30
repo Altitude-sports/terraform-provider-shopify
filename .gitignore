@@ -1,7 +1,9 @@
+# Terraform temporary files
 .terraform
 terraform.log
 terraform.tfstate*
-terraform-provider-shopify
 *.tf
-dist
-node_modules
+
+# Build files
+terraform-provider-shopify
+

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/edahlseng/terraform-provider-shopify/shopify"
-	"github.com/hashicorp/terraform/plugin"
+	"github.com/Altitude-sports/terraform-provider-shopify/shopify"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
 
 func main() {
 	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: shopify.Provider})
+		ProviderFunc: shopify.Provider,
+	})
 }
