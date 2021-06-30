@@ -19,4 +19,6 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: ${{ matrix.go }}
-      - run: make
+      - run: |
+          export PATH=$(go env GOPATH)/bin:${PATH}
+          make
