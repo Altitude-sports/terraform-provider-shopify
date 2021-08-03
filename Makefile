@@ -2,7 +2,7 @@ TEST?=$$(go list ./... |grep -v 'vendor')
 GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
 TARGETS=darwin linux windows
 WEBSITE_REPO=github.com/hashicorp/terraform-website
-PKG_NAME=shopify
+PKG_NAME=Shopify
 
 default: build fmtcheck staticcheck errcheck
 
@@ -42,12 +42,12 @@ fmtcheck:
 	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
 
 staticcheck:
-	@printf $(COLOR) "Run static check..."
+	@printf $(COLOR) "Run static check...\n"
 	@GO111MODULE=off go get -u honnef.co/go/tools/cmd/staticcheck
 	@staticcheck ./...
 
 errcheck:
-	@printf $(COLOR) "Run error check..."
+	@printf $(COLOR) "Run error check...\n"
 	@GO111MODULE=off go get -u github.com/kisielk/errcheck
 	@errcheck ./...
 

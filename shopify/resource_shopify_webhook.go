@@ -28,7 +28,6 @@ func resourceShopifyWebhook() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-
 			"format": {
 				Type:     schema.TypeString,
 				Default:  "json",
@@ -99,7 +98,9 @@ func resourceShopifyWebhookCreate(
 		PrivateMetafieldNamespaces: privateMetafieldNamespaces,
 	}
 
-	client := meta.(*shopify.Client)
+	config := meta.(Config)
+	client := config.NewClient()
+
 	webhook, _, err := client.Webhooks.Create(params)
 	if err != nil {
 		return diag.Errorf("could not create Shopify webhook: %s", err)
@@ -115,7 +116,7 @@ func resourceShopifyWebhookCreate(
 	_ = d.Set("metafield_namespaces", webhook.MetafieldNamespaces)
 	_ = d.Set("private_metafield_namespaces", webhook.PrivateMetafieldNamespaces)
 
-	return nil
+	return resourceShopifyWebhookRead(ctx, d, meta)
 }
 
 func resourceShopifyWebhookUpdate(
@@ -154,7 +155,9 @@ func resourceShopifyWebhookUpdate(
 		PrivateMetafieldNamespaces: privateMetafieldNamespaces,
 	}
 
-	client := meta.(*shopify.Client)
+	config := meta.(Config)
+	client := config.NewClient()
+
 	webhook, _, err := client.Webhooks.Update(d.Id(), params)
 	if err != nil {
 		return diag.Errorf("could not update Shopify webhook: %s", err)
@@ -168,7 +171,7 @@ func resourceShopifyWebhookUpdate(
 	_ = d.Set("metafield_namespaces", webhook.MetafieldNamespaces)
 	_ = d.Set("private_metafield_namespaces", webhook.PrivateMetafieldNamespaces)
 
-	return nil
+	return resourceShopifyWebhookRead(ctx, d, meta)
 }
 
 func resourceShopifyWebhookRead(
@@ -176,7 +179,9 @@ func resourceShopifyWebhookRead(
 	d *schema.ResourceData,
 	meta interface{},
 ) diag.Diagnostics {
-	client := meta.(*shopify.Client)
+	config := meta.(Config)
+	client := config.NewClient()
+
 	webhook, resp, err := client.Webhooks.Read(d.Id())
 	if resp.StatusCode == http.StatusNotFound {
 		log.Printf("[DEBUG] Removing webhook ID='%s' from state because it no longer exists in Shopify", d.Id())
@@ -203,7 +208,9 @@ func resourceShopifyWebhookDelete(
 	d *schema.ResourceData,
 	meta interface{},
 ) diag.Diagnostics {
-	client := meta.(*shopify.Client)
+	config := meta.(Config)
+	client := config.NewClient()
+
 	_, err := client.Webhooks.Delete(d.Id())
 	if err != nil {
 		return diag.Errorf("could not delete Shopify webhook: %s", err)
