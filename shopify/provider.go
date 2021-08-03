@@ -35,7 +35,7 @@ func Provider() *schema.Provider {
 func providerConfigure(
 	ctx context.Context,
 	d *schema.ResourceData,
-) (client interface{}, diags diag.Diagnostics) {
+) (config interface{}, diags diag.Diagnostics) {
 	shopifyDomain := d.Get("domain").(string)
 	shopifyAccessToken := d.Get("access_token").(string)
 	if shopifyDomain == "" || shopifyAccessToken == "" {
@@ -43,10 +43,10 @@ func providerConfigure(
 		return
 	}
 
-	config := Config{
+	config = Config{
 		ShopifyDomain:      shopifyDomain,
 		ShopifyAccessToken: shopifyAccessToken,
 	}
-	client = config.NewClient()
+
 	return
 }
