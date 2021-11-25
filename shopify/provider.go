@@ -22,6 +22,12 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("SHOPIFY_ACCESS_TOKEN", nil),
 				Description: "Shopify access token",
 			},
+			"api_version": {
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("SHOPIFY_API_VERSION", nil),
+				Description: "Shopify API version",
+			},
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
@@ -38,6 +44,7 @@ func providerConfigure(
 ) (config interface{}, diags diag.Diagnostics) {
 	shopifyDomain := d.Get("domain").(string)
 	shopifyAccessToken := d.Get("access_token").(string)
+	shopifyApiVersion := d.Get("api_version").(string)
 	if shopifyDomain == "" || shopifyAccessToken == "" {
 		diags = diag.Errorf("Please specify both 'domain' and 'access_token'")
 		return
@@ -46,6 +53,7 @@ func providerConfigure(
 	config = Config{
 		ShopifyDomain:      shopifyDomain,
 		ShopifyAccessToken: shopifyAccessToken,
+		ShopifyApiVersion:  shopifyApiVersion,
 	}
 
 	return
