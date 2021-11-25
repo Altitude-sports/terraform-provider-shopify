@@ -15,9 +15,11 @@ type WebhookService struct {
 	sling *sling.Sling
 }
 
-func newWebhookService(sling *sling.Sling) *WebhookService {
+func newWebhookService(sling *sling.Sling, apiVersion string) *WebhookService {
+	apiPath := fmt.Sprintf("%s/", apiVersion)
+
 	return &WebhookService{
-		sling: sling.New().Path("admin/").Path("webhooks/"),
+		sling: sling.New().Path("admin/").Path("api/").Path(apiPath).Path("webhooks/"),
 	}
 }
 

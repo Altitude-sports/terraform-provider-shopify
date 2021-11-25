@@ -11,7 +11,7 @@ type Client struct {
 	Webhooks *WebhookService
 }
 
-func NewClient(shopifyDomain string, shopifyAccessToken string) *Client {
+func NewClient(shopifyDomain string, shopifyAccessToken string, apiVersion string) *Client {
 	baseUrl := fmt.Sprintf("https://%s.myshopify.com/", shopifyDomain)
 	base := sling.New().Base(
 		baseUrl,
@@ -25,6 +25,6 @@ func NewClient(shopifyDomain string, shopifyAccessToken string) *Client {
 
 	return &Client{
 		sling:    base,
-		Webhooks: newWebhookService(base),
+		Webhooks: newWebhookService(base, apiVersion),
 	}
 }
